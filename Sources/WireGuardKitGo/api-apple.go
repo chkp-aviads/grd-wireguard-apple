@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+	"wireproxy"
 
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/conn"
@@ -52,14 +53,16 @@ func (l CLogger) Printf(format string, args ...interface{}) {
 }
 
 type tunnelHandle struct {
-	*device.Device
-	*device.Logger
+	Device *device.Device
+	Logger *device.Logger
+	Vtun   *wireproxy.VirtualTun
 }
 
 var tunnelHandles = make(map[int32]tunnelHandle)
+var proxyHandles = make(map[int32]wireproxy.VirtualTun)
 
 func init() {
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, unix.SIGUSR2)
 	go func() {
 		buf := make([]byte, os.Getpagesize())
@@ -129,7 +132,7 @@ func wgTurnOn(settings *C.char, tunFd int32) int32 {
 		unix.Close(dupTunFd)
 		return -1
 	}
-	tunnelHandles[i] = tunnelHandle{dev, logger}
+	tunnelHandles[i] = tunnelHandle{dev, logger, nil}
 	return i
 }
 
@@ -140,7 +143,11 @@ func wgTurnOff(tunnelHandle int32) {
 		return
 	}
 	delete(tunnelHandles, tunnelHandle)
-	dev.Close()
+	dev.Device.Close()
+
+	if dev.Vtun != nil {
+		dev.Vtun.Cancel() // This will close the proxy server
+	}
 }
 
 //export wgSetConfig
@@ -149,9 +156,9 @@ func wgSetConfig(tunnelHandle int32, settings *C.char) int64 {
 	if !ok {
 		return 0
 	}
-	err := dev.IpcSet(C.GoString(settings))
+	err := dev.Device.IpcSet(C.GoString(settings))
 	if err != nil {
-		dev.Errorf("Unable to set IPC settings: %v", err)
+		dev.Logger.Errorf("Unable to set IPC settings: %v", err)
 		if ipcErr, ok := err.(*device.IPCError); ok {
 			return ipcErr.ErrorCode()
 		}
@@ -166,7 +173,7 @@ func wgGetConfig(tunnelHandle int32) *C.char {
 	if !ok {
 		return nil
 	}
-	settings, err := device.IpcGet()
+	settings, err := device.Device.IpcGet()
 	if err != nil {
 		return nil
 	}
@@ -181,15 +188,15 @@ func wgBumpSockets(tunnelHandle int32) {
 	}
 	go func() {
 		for i := 0; i < 10; i++ {
-			err := dev.BindUpdate()
+			err := dev.Device.BindUpdate()
 			if err == nil {
-				dev.SendKeepalivesToPeersWithCurrentKeypair()
+				dev.Device.SendKeepalivesToPeersWithCurrentKeypair()
 				return
 			}
-			dev.Errorf("Unable to update bind, try %d: %v", i+1, err)
+			dev.Logger.Errorf("Unable to update bind, try %d: %v", i+1, err)
 			time.Sleep(time.Second / 2)
 		}
-		dev.Errorf("Gave up trying to update bind; tunnel is likely dysfunctional")
+		dev.Logger.Errorf("Gave up trying to update bind; tunnel is likely dysfunctional")
 	}()
 }
 
@@ -199,7 +206,7 @@ func wgDisableSomeRoamingForBrokenMobileSemantics(tunnelHandle int32) {
 	if !ok {
 		return
 	}
-	dev.DisableSomeRoamingForBrokenMobileSemantics()
+	dev.Device.DisableSomeRoamingForBrokenMobileSemantics()
 }
 
 //export wgVersion
@@ -220,4 +227,51 @@ func wgVersion() *C.char {
 	return C.CString("unknown")
 }
 
-func main() {}
+func wgProxyTurnOn(configC *C.char, proxyAddressC *C.char) int32 {
+	logger := &device.Logger{
+		Verbosef: CLogger(0).Printf,
+		Errorf:   CLogger(1).Printf,
+	}
+
+	config := C.GoString(configC)
+	proxyAddress := C.GoString(proxyAddressC)
+
+	// Append to WireGuard settings the proxy address and parse the config
+	config += "\n[http]\nBindAddress = " + proxyAddress
+	conf, err := wireproxy.ParseConfig(config)
+	if err != nil {
+		logger.Errorf("Unable to parse config: %v", err)
+		return -1
+	}
+
+	// Start the WireGuard device
+	tun, err := wireproxy.StartWireguard(conf.Device, logger)
+	if err != nil {
+		logger.Errorf("Unable to start WireGuard: %v", err)
+		return -1
+	}
+	logger.Verbosef("WireGuard device started")
+
+	for _, spawner := range conf.Routines {
+		go spawner.SpawnRoutine(tun)
+	}
+
+	tun.StartPingIPs()
+	logger.Verbosef("Proxy server started")
+
+	var i int32
+	for i = 0; i < math.MaxInt32; i++ {
+		if _, exists := tunnelHandles[i]; !exists {
+			break
+		}
+	}
+	if i == math.MaxInt32 {
+		return -1
+	}
+	tunnelHandles[i] = tunnelHandle{tun.Dev, logger, tun}
+	return i
+}
+
+func main() {
+
+}

@@ -1,4 +1,4 @@
-module golang.zx2c4.com/wireguard/apple
+module wireguard-apple
 
 go 1.23
 
@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/google/btree v1.1.3 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/time v0.6.0 // indirect

@@ -227,6 +227,7 @@ func wgVersion() *C.char {
 	return C.CString("unknown")
 }
 
+//export wgProxyTurnOn
 func wgProxyTurnOn(configC *C.char, proxyAddressC *C.char) int32 {
 	logger := &device.Logger{
 		Verbosef: CLogger(0).Printf,

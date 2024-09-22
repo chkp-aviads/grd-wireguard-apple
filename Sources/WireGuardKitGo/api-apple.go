@@ -227,19 +227,28 @@ func wgVersion() *C.char {
 	return C.CString("unknown")
 }
 
+func StartWireGuardProxy(config, proxyAddress, username, password string) int32 {
+	return wgProxyTurnOn(C.CString(config), C.CString(proxyAddress), C.CString(username), C.CString(password))
+}
+
 //export wgProxyTurnOn
-func wgProxyTurnOn(configC *C.char, proxyAddressC *C.char) int32 {
+func wgProxyTurnOn(configC *C.char, proxyAddressC, usernameC, passwordC *C.char) int32 {
 	logger := &device.Logger{
 		Verbosef: CLogger(0).Printf,
 		Errorf:   CLogger(1).Printf,
 	}
+	// logger := device.NewLogger(device.LogLevelVerbose, "")
 
 	config := C.GoString(configC)
 	proxyAddress := C.GoString(proxyAddressC)
+	username := C.GoString(usernameC)
+	password := C.GoString(passwordC)
 
 	// Append to WireGuard settings the proxy address and parse the config
 	config += "\n[http]\nBindAddress = " + proxyAddress
-	conf, err := wireproxy.ParseConfig(config)
+	config += "\nUsername = " + username
+	config += "\nPassword = " + password
+	conf, err := wireproxy.ParseConfigFromString(config)
 	if err != nil {
 		logger.Errorf("Unable to parse config: %v", err)
 		return -1

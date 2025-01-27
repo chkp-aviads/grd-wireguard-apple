@@ -16,6 +16,7 @@ import "C"
 import (
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -53,9 +54,10 @@ func (l CLogger) Printf(format string, args ...interface{}) {
 }
 
 type tunnelHandle struct {
-	Device *device.Device
-	Logger *device.Logger
-	Vtun   *wireproxy.VirtualTun
+	Device            *device.Device
+	Logger            *device.Logger
+	Vtun              *wireproxy.VirtualTun
+	HealthCheckServer *http.Server
 }
 
 var tunnelHandles = make(map[int32]tunnelHandle)
@@ -132,7 +134,7 @@ func wgTurnOn(settings *C.char, tunFd int32) int32 {
 		unix.Close(dupTunFd)
 		return -1
 	}
-	tunnelHandles[i] = tunnelHandle{dev, logger, nil}
+	tunnelHandles[i] = tunnelHandle{dev, logger, nil, nil}
 	return i
 }
 
@@ -143,6 +145,11 @@ func wgTurnOff(tunnelHandle int32) {
 		return
 	}
 	delete(tunnelHandles, tunnelHandle)
+
+	if dev.HealthCheckServer != nil {
+		dev.HealthCheckServer.Close() // This will close the health check server
+	}
+
 	dev.Device.Close()
 
 	if dev.Vtun != nil {
@@ -278,8 +285,48 @@ func wgProxyTurnOn(configC *C.char, proxyAddressC, usernameC, passwordC *C.char)
 	if i == math.MaxInt32 {
 		return -1
 	}
-	tunnelHandles[i] = tunnelHandle{tun.Dev, logger, tun}
+	tunnelHandles[i] = tunnelHandle{tun.Dev, logger, tun, nil}
 	return i
+}
+
+func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
+	dev, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		dev.Logger.Errorf("Invalid tunnel handle: %d", tunnelHandle)
+		return -1
+	}
+
+	tun := dev.Vtun
+	address := C.GoString(addressC)
+
+	server := &http.Server{
+		Addr:    address,
+		Handler: tun,
+	}
+	err := server.ListenAndServe()
+	if err != nil {
+		dev.Logger.Errorf("Unable to start health check server: %v", err)
+		return -1
+	}
+	dev.Logger.Verbosef("Health check server started")
+	dev.HealthCheckServer = server
+	return tunnelHandle
+}
+
+func wgSuspendHealthCheckPings(tunnelHandle int32) {
+	dev, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return
+	}
+	dev.Vtun.StopPingIPs()
+}
+
+func wgResumeHealthCheckPings(tunnelHandle int32) {
+	dev, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return
+	}
+	dev.Vtun.StartPingIPs()
 }
 
 func main() {

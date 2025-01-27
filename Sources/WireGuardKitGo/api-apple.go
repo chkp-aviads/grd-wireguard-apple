@@ -289,6 +289,7 @@ func wgProxyTurnOn(configC *C.char, proxyAddressC, usernameC, passwordC *C.char)
 	return i
 }
 
+//export wgStartHealthCheckServer
 func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {
@@ -313,6 +314,7 @@ func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
 	return tunnelHandle
 }
 
+//export wgSuspendHealthCheckPings
 func wgSuspendHealthCheckPings(tunnelHandle int32) {
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {
@@ -321,6 +323,7 @@ func wgSuspendHealthCheckPings(tunnelHandle int32) {
 	dev.Vtun.StopPingIPs()
 }
 
+//export wgResumeHealthCheckPings
 func wgResumeHealthCheckPings(tunnelHandle int32) {
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {

@@ -148,6 +148,7 @@ func wgTurnOff(tunnelHandle int32) {
 	delete(tunnelHandles, tunnelHandle)
 
 	if dev.HealthCheckServer != nil {
+		dev.Vtun.StopPingIPs()
 		dev.HealthCheckServer.Close() // This will close the health check server
 	}
 
@@ -328,6 +329,7 @@ func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
 
 	dev.Logger.Verbosef("Health check server started")
 	dev.HealthCheckServer = server
+	tunnelHandles[tunnelHandle] = dev
 	return tunnelHandle
 }
 

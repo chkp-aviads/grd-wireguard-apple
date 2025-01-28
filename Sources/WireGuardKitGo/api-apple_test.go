@@ -5,19 +5,23 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func TestWireGuardViaHttpProxy(t *testing.T) {
 	const saseConfig = `
 [Interface]
-Address = 10.255.240.32
-DNS = 10.255.240.1
-PrivateKey = gGnCwagYqJMTWD1cPuqD4JobgXa0128U+/whiP86UGU=
 ListenPort = 8000
+DNS = 10.255.240.1
+CheckAlive = 10.255.240.1
+CheckAliveInterval = 3
+PrivateKey = +DOLuVSmTq7QMWHhVvSzT5pInU5lF+XY618M3cFUcXc=
+Address = 10.255.240.18
 
-[Peer]\nAllowedIPs = 10.255.240.0/24, 0.0.0.0/0
-PublicKey = 8o54P/m42zYYkMEhyTevws+/y7LNmBpTxXE8VyyDd0c=
-Endpoint = 67.55.94.84:8055
+[Peer]
+PublicKey = g9iZftABtEzok6HUBuYwmcHF+tuTUk6Gzlj3FM+9TXA=
+AllowedIPs = 10.255.240.0/24, 0.0.0.0/0
+Endpoint = 67.55.94.85:8055
 `
 
 	username := "test"
@@ -63,7 +67,29 @@ Endpoint = 67.55.94.84:8055
 		t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
 	}
 
-	wgTurnOff(handle)
+	if StartHealthCheckServer(handle, "127.0.0.1:9093") < 0 {
+		t.Fatalf("Failed to start health check server")
+	}
+
+	// Wait 10 seconds
+	time.Sleep(10 * time.Second)
+
+	// Query health check server
+	pingreq, err := http.NewRequest("GET", "http://127.0.0.1:9093/readyz", nil)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	// Send request and check response
+	pingresp, err := http.DefaultClient.Do(pingreq)
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
+	}
+	defer pingresp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
+	}
+
+	// wgTurnOff(handle)
 	t.Logf("WireGuard proxy turned off")
 	// wait indefinitely
 	select {}

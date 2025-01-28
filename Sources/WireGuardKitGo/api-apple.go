@@ -16,6 +16,7 @@ import "C"
 import (
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -289,6 +290,10 @@ func wgProxyTurnOn(configC *C.char, proxyAddressC, usernameC, passwordC *C.char)
 	return i
 }
 
+func StartHealthCheckServer(tunnelHandle int32, addressC string) int32 {
+	return wgStartHealthCheckServer(tunnelHandle, C.CString(addressC))
+}
+
 //export wgStartHealthCheckServer
 func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
 	dev, ok := tunnelHandles[tunnelHandle]
@@ -304,11 +309,23 @@ func wgStartHealthCheckServer(tunnelHandle int32, addressC *C.char) int32 {
 		Addr:    address,
 		Handler: tun,
 	}
-	err := server.ListenAndServe()
+
+	// Try to listen on the given address
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		dev.Logger.Errorf("Unable to start health check server: %v", err)
+		dev.Logger.Errorf("Unable to listen on address %s: %v", address, err)
 		return -1
 	}
+
+	go func() {
+		err := server.Serve(listener)
+		if err != nil && err != http.ErrServerClosed {
+			dev.Logger.Errorf("Unable to start health check server: %v", err)
+		} else if err == http.ErrServerClosed {
+			dev.Logger.Verbosef("Health check server closed")
+		}
+	}()
+
 	dev.Logger.Verbosef("Health check server started")
 	dev.HealthCheckServer = server
 	return tunnelHandle

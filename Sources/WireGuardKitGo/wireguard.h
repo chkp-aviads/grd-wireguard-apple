@@ -13,7 +13,7 @@
 typedef void(*logger_fn_t)(void *context, int level, const char *msg);
 extern void wgSetLogger(void *context, logger_fn_t logger_fn);
 extern int wgTurnOn(const char *settings, int32_t tun_fd);
-extern int wgProxyTurnOn(const char *settings, const char *proxyAddress, const char *proxyUsername, const char *proxyPassword);
+extern int wgProxyTurnOn(const char *settings, const char *proxyAddress, const char *proxyUsername, const char *proxyPassword, bool isSocks);
 extern void wgTurnOff(int handle);
 extern int wgStartHealthCheckServer(int handle, const char *address);
 extern void wgSuspendHealthCheckPings(int handle);

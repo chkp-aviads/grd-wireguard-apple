@@ -69,15 +69,24 @@ func init() {
 	signal.Notify(signals, unix.SIGUSR2)
 	go func() {
 		buf := make([]byte, os.Getpagesize())
-		for {
-			select {
-			case <-signals:
-				n := runtime.Stack(buf, true)
-				buf[n] = 0
-				if uintptr(loggerFunc) != 0 {
-					C.callLogger(loggerFunc, loggerCtx, 0, (*C.char)(unsafe.Pointer(&buf[0])))
-				}
+		for range signals {
+			n := runtime.Stack(buf, true)
+			buf[n] = 0
+			if uintptr(loggerFunc) != 0 {
+				C.callLogger(loggerFunc, loggerCtx, 0, (*C.char)(unsafe.Pointer(&buf[0])))
 			}
+		}
+	}()
+
+	// Apple VPN extensions have a memory limit of 15MB. Conserve memory by increasing garbage
+	// collection frequency and returning memory to the OS every minute.
+	debug.SetGCPercent(10)
+	// TODO: Check if this is still needed in go 1.13, which returns memory to the OS
+	// automatically.
+	ticker := time.NewTicker(time.Minute * 1)
+	go func() {
+		for range ticker.C {
+			debug.FreeOSMemory()
 		}
 	}()
 }

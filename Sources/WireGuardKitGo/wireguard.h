@@ -22,6 +22,7 @@ extern int64_t wgSetConfig(int handle, const char *settings);
 extern char *wgGetConfig(int handle);
 extern void wgBumpSockets(int handle);
 extern void wgDisableSomeRoamingForBrokenMobileSemantics(int handle);
+extern void wgRunGC();
 extern const char *wgVersion();
 
 #endif

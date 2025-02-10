@@ -366,6 +366,13 @@ func wgResumeHealthCheckPings(tunnelHandle int32) {
 	dev.Vtun.StartPingIPs()
 }
 
+// Add method to run garbage collection
+//
+//export wgRunGC
+func wgRunGC() {
+	debug.FreeOSMemory()
+}
+
 func main() {
 
 }

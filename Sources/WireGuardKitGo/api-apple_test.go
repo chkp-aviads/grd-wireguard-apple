@@ -138,8 +138,6 @@ Endpoint = hk1.vpnjantit.com:1024
 		t.Fatalf("TCP connection should be open, but it is closed")
 	}
 
-	conn.Close()
-
 	// Wait a moment to ensure the proxy has shut down
 	time.Sleep(5 * time.Second)
 

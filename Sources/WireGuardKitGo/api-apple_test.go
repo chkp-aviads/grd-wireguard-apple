@@ -16,13 +16,13 @@ import (
 func TestWireGuardViaHttpProxy(t *testing.T) {
 	const saseConfig = `
 [Interface]
-Address = 192.168.6.223/32
+Address = 192.168.6.60/32
 DNS = 1.1.1.1,8.8.8.8
-PrivateKey = aMJpa6gFln7MDDiCNzXZpT4yIRBQdk7yGGvMKLEMfmo=
+PrivateKey = 4D4bqTEQVDLkhc8TrgHySx87GftW7iUYTreNpDYhT1U=
 [Peer]
-publickey=sLXCE5Jsc2TVKeasTOlseT613zb/YalN3PfPDltNGhI=
+publickey=Q8c8F4MGGpLUeQ0YIUhYsxh+QVU68stU96k7BjgJ+RY=
 AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = il1.vpnjantit.com:1024
+Endpoint = hk1.vpnjantit.com:1024
 `
 
 	username := "test"
@@ -72,8 +72,6 @@ Endpoint = il1.vpnjantit.com:1024
 	if err != nil {
 		t.Fatalf("Failed to send GET request: %v", err)
 	}
-	defer resp.Body.Close()
-
 	// // Create a SOCKS5 dialer
 	// dialer, err := proxy.SOCKS5("tcp", proxyAddr, proxyAuth, proxy.Direct)
 	// if err != nil {
@@ -101,6 +99,7 @@ Endpoint = il1.vpnjantit.com:1024
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
 	}
+	resp.Body.Close()
 
 	// if StartHealthCheckServer(handle, "127.0.0.1:9093") < 0 {
 	// 	t.Fatalf("Failed to start health check server")
@@ -138,6 +137,11 @@ Endpoint = il1.vpnjantit.com:1024
 	if !checkConnection(conn) {
 		t.Fatalf("TCP connection should be open, but it is closed")
 	}
+
+	conn.Close()
+
+	// Wait a moment to ensure the proxy has shut down
+	time.Sleep(5 * time.Second)
 
 	// time.Sleep(2 * time.Second)
 	wgTurnOff(handle)

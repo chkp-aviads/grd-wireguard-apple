@@ -23,6 +23,18 @@ extern char *wgGetConfig(int handle);
 extern void wgBumpSockets(int handle);
 extern void wgDisableSomeRoamingForBrokenMobileSemantics(int handle);
 extern void wgRunGC();
+extern void wgPrintMemoryUsage(int handle);
+extern void wgSetGCMemoryLimit(int limit, int maxThreads);
 extern const char *wgVersion();
+
+typedef int (*write_fn_t)(const char* data, int length);
+typedef int (*close_fn_t)();
+
+extern int NewTunWriter(write_fn_t writeFunc, close_fn_t closeFunc);
+extern void FreeTunWriter(int writerID);
+extern int tunConnect(int writerID, const char *socks5Proxy, int isUDPEnabled);
+extern void tunDisconnectTunnel(int tunnelID);
+extern int tunWriteToTunnel(int tunnelID, const char *data, int length);
+extern int tunIsTunnelConnected(int tunnelID);
 
 #endif

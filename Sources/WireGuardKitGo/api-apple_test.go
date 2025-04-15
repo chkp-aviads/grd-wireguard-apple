@@ -28,7 +28,7 @@ Endpoint = hk1.vpnjantit.com:1024
 	username := "test"
 	password := "test"
 
-	handle := StartWireGuardProxy(saseConfig, "127.0.0.1:9092", username, password)
+	handle := WGProxyTurnOn(saseConfig, "127.0.0.1:9092", username, password, false)
 	if handle == -1 {
 		t.Fatalf("Failed to start wireguard proxy")
 	}
@@ -101,7 +101,7 @@ Endpoint = hk1.vpnjantit.com:1024
 	}
 	resp.Body.Close()
 
-	// if StartHealthCheckServer(handle, "127.0.0.1:9093") < 0 {
+	// if WGStartHealthCheckServer(handle, "127.0.0.1:9093") < 0 {
 	// 	t.Fatalf("Failed to start health check server")
 	// }
 
@@ -123,7 +123,7 @@ Endpoint = hk1.vpnjantit.com:1024
 	// 	// t.Fatalf("Expected status code 200, got %d", resp.StatusCode)
 	// }
 
-	// wgSuspendHealthCheckPings(handle)
+	// WGSuspendHealthCheckPings(handle)
 
 	// Establish a plain TCP connection to the proxy address
 	conn, err := net.Dial("tcp", proxyAddr)
@@ -142,7 +142,7 @@ Endpoint = hk1.vpnjantit.com:1024
 	time.Sleep(5 * time.Second)
 
 	// time.Sleep(2 * time.Second)
-	wgTurnOff(handle)
+	WGTurnOff(handle)
 	t.Logf("WireGuard proxy turned off")
 
 	// Wait a moment to ensure the proxy has shut down

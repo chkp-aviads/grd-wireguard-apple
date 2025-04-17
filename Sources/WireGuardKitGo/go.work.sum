@@ -226,8 +226,8 @@ github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/checkpoint-restore/go-criu/v4 v4.1.0/go.mod h1:xUQBLp4RLc5zJtWY++yjOoMoB5lihDt7fai+75m+rGw=
 github.com/checkpoint-restore/go-criu/v5 v5.0.0/go.mod h1:cfwC0EG7HMUenopBsUf9d89JlCLQIfgVcNsNN0t6T2M=
 github.com/chkp-aviads/apple-gotun2socks-library v0.0.0-20250415170441-75a559da9b9c/go.mod h1:xyJG37rz2afnbNqD0zGnIaLN24+jEd1ivdNGeACdctg=
-github.com/chkp-aviads/apple-gotun2socks-library v0.9.0 h1:rM2j5ZBpNY1ksS6Ct86cT/c8ipyi/y4G9mkiG/0F1tI=
-github.com/chkp-aviads/apple-gotun2socks-library v0.9.0/go.mod h1:xyJG37rz2afnbNqD0zGnIaLN24+jEd1ivdNGeACdctg=
+github.com/chkp-aviads/apple-gotun2socks-library v1.0.0 h1:Tv/L/Ttfh49XkbFqFOvC0l+Vnb9DwZ9xAdHcf3CrHes=
+github.com/chkp-aviads/apple-gotun2socks-library v1.0.0/go.mod h1:xyJG37rz2afnbNqD0zGnIaLN24+jEd1ivdNGeACdctg=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=

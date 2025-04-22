@@ -21,5 +21,6 @@ require (
 
 )
 
-// replace tun2socks => /Users/aviads/Documents/git/ONPNGPOC/apple-gotun2socks-library
-replace tun2socks => github.com/chkp-aviads/apple-gotun2socks-library v1.0.0
+replace tun2socks => /Users/aviads/Documents/git/ONPNGPOC/apple-gotun2socks-library
+
+// replace tun2socks => github.com/chkp-aviads/apple-gotun2socks-library v1.0.0

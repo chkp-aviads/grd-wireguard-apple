@@ -14,16 +14,7 @@ import (
 )
 
 func TestWireGuardViaHttpProxy(t *testing.T) {
-	const saseConfig = `
-[Interface]
-Address = 192.168.6.60/32
-DNS = 1.1.1.1,8.8.8.8
-PrivateKey = 4D4bqTEQVDLkhc8TrgHySx87GftW7iUYTreNpDYhT1U=
-[Peer]
-publickey=Q8c8F4MGGpLUeQ0YIUhYsxh+QVU68stU96k7BjgJ+RY=
-AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = hk1.vpnjantit.com:1024
-`
+	const saseConfig = ``
 
 	username := "test"
 	password := "test"

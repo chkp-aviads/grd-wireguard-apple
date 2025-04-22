@@ -48,7 +48,7 @@ public class WireGuardAdapter {
     private weak var packetTunnelProvider: NEPacketTunnelProvider?
 
     /// Log handler closure.
-    private let logHandler: LogHandler
+    private static var logHandler: LogHandler?
 
     /// Private queue used to synchronize access to `WireGuardAdapter` members.
     private let workQueue = DispatchQueue(label: "WireGuardAdapterWorkQueue")
@@ -131,7 +131,7 @@ public class WireGuardAdapter {
     /// - Parameter logHandler: a log handler closure.
     public init(with packetTunnelProvider: NEPacketTunnelProvider, logHandler: @escaping LogHandler) {
         self.packetTunnelProvider = packetTunnelProvider
-        self.logHandler = logHandler
+        WireGuardAdapter.logHandler = logHandler
 
         setupLogHandler()
     }
@@ -139,7 +139,7 @@ public class WireGuardAdapter {
     deinit {
         // Force remove logger to make sure that no further calls to the instance of this class
         // can happen after deallocation.
-        wgSetLogger(nil, nil)
+        wgSetLogger(nil)
 
         // Cancel network monitor
         networkMonitor?.cancel()
@@ -289,17 +289,13 @@ public class WireGuardAdapter {
 
     /// Setup WireGuard log handler.
     private func setupLogHandler() {
-        let context = Unmanaged.passUnretained(self).toOpaque()
-        wgSetLogger(context) { context, logLevel, message in
-            guard let context = context, let message = message else { return }
-
-            let unretainedSelf = Unmanaged<WireGuardAdapter>.fromOpaque(context)
-                .takeUnretainedValue()
+        wgSetLogger() { context, logLevel, message in
+            guard let message = message else { return }
 
             let swiftString = String(cString: message).trimmingCharacters(in: .newlines)
             let tunnelLogLevel = WireGuardLogLevel(rawValue: logLevel) ?? .verbose
 
-            unretainedSelf.logHandler(tunnelLogLevel, swiftString)
+            WireGuardAdapter.logHandler?(tunnelLogLevel, swiftString)
         }
     }
 
@@ -333,7 +329,7 @@ public class WireGuardAdapter {
                 throw WireGuardAdapterError.setNetworkSettings(systemError)
             }
         } else {
-            self.logHandler(.error, "setTunnelNetworkSettings timed out after 5 seconds; proceeding anyway")
+            WireGuardAdapter.logHandler?(.error, "setTunnelNetworkSettings timed out after 5 seconds; proceeding anyway")
         }
     }
 
@@ -401,12 +397,12 @@ public class WireGuardAdapter {
             switch result {
             case .success((let sourceEndpoint, let resolvedEndpoint)):
                 if sourceEndpoint.host == resolvedEndpoint.host {
-                    self.logHandler(.verbose, "DNS64: mapped \(sourceEndpoint.host) to itself.")
+                    WireGuardAdapter.logHandler?(.verbose, "DNS64: mapped \(sourceEndpoint.host) to itself.")
                 } else {
-                    self.logHandler(.verbose, "DNS64: mapped \(sourceEndpoint.host) to \(resolvedEndpoint.host)")
+                    WireGuardAdapter.logHandler?(.verbose, "DNS64: mapped \(sourceEndpoint.host) to \(resolvedEndpoint.host)")
                 }
             case .failure(let resolutionError):
-                self.logHandler(.error, "Failed to resolve endpoint \(resolutionError.address): \(resolutionError.errorDescription ?? "(nil)")")
+                WireGuardAdapter.logHandler?(.error, "Failed to resolve endpoint \(resolutionError.address): \(resolutionError.errorDescription ?? "(nil)")")
             }
         }
     }
@@ -414,7 +410,7 @@ public class WireGuardAdapter {
     /// Helper method used by network path monitor.
     /// - Parameter path: new network path
     private func didReceivePathUpdate(path: Network.NWPath) {
-        self.logHandler(.verbose, "Network change detected with \(path.status) route and interface order \(path.availableInterfaces)")
+        WireGuardAdapter.logHandler?(.verbose, "Network change detected with \(path.status) route and interface order \(path.availableInterfaces)")
 
         #if os(macOS)
         if case .started(let handle, _) = self.state {
@@ -431,7 +427,7 @@ public class WireGuardAdapter {
                 wgDisableSomeRoamingForBrokenMobileSemantics(handle)
                 wgBumpSockets(handle)
             } else {
-                self.logHandler(.verbose, "Connectivity offline, pausing backend.")
+                WireGuardAdapter.logHandler?(.verbose, "Connectivity offline, pausing backend.")
 
                 self.state = .temporaryShutdown(settingsGenerator)
                 wgTurnOff(handle)
@@ -440,7 +436,7 @@ public class WireGuardAdapter {
         case .temporaryShutdown(let settingsGenerator):
             guard path.status.isSatisfiable else { return }
 
-            self.logHandler(.verbose, "Connectivity online, resuming backend.")
+            WireGuardAdapter.logHandler?(.verbose, "Connectivity online, resuming backend.")
 
             do {
                 try self.setNetworkSettings(settingsGenerator.generateNetworkSettings())
@@ -453,7 +449,7 @@ public class WireGuardAdapter {
                     settingsGenerator
                 )
             } catch {
-                self.logHandler(.error, "Failed to restart backend: \(error.localizedDescription)")
+                WireGuardAdapter.logHandler?(.error, "Failed to restart backend: \(error.localizedDescription)")
             }
 
         case .stopped:

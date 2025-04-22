@@ -8,9 +8,9 @@ package main
 // #include <stdint.h>
 // #include <stdlib.h>
 // #include <sys/types.h>
-// static void callLogger(void *func, void *ctx, int level, const char *msg)
+// static void callLogger(void *func, int ctx, int level, const char *msg)
 // {
-// 	((void(*)(void *, int, const char *))func)(ctx, level, msg);
+// 	((void(*)(int, int, const char *))func)(ctx, level, msg);
 // }
 // static int callWriteFunc(void *func, const char* data, int length)
 // {
@@ -44,10 +44,29 @@ import (
 	"golang.zx2c4.com/wireguard/tun"
 )
 
-var loggerFunc unsafe.Pointer
-var loggerCtx unsafe.Pointer
+// LogContextWireGuard is the context for WireGuard logging.
+const LogContextWireGuard = 1
 
-type CLogger int
+// LogContextTun2Socks is the context for tun2socks logging.
+const LogContextTun2Socks = 2
+
+//export wgLogContextWireGuard
+func wgLogContextWireGuard() int {
+	return LogContextWireGuard
+}
+
+//export wgLogContextTun2Socks
+func wgLogContextTun2Socks() int {
+	return LogContextTun2Socks
+}
+
+// loggerFunc is a pointer to the logger function set by the C code.
+var loggerFunc unsafe.Pointer
+
+type CLogger struct {
+	Context int
+	Level   int
+}
 
 func cstring(s string) *C.char {
 	b, err := unix.BytePtrFromString(s)
@@ -62,7 +81,7 @@ func (l CLogger) Printf(format string, args ...interface{}) {
 	if uintptr(loggerFunc) == 0 {
 		return
 	}
-	C.callLogger(loggerFunc, loggerCtx, C.int(l), cstring(fmt.Sprintf(format, args...)))
+	C.callLogger(loggerFunc, C.int(l.Context), C.int(l.Level), cstring(fmt.Sprintf(format, args...)))
 }
 
 type tunnelHandle struct {
@@ -84,7 +103,7 @@ func init() {
 			n := runtime.Stack(buf, true)
 			buf[n] = 0
 			if uintptr(loggerFunc) != 0 {
-				C.callLogger(loggerFunc, loggerCtx, 0, (*C.char)(unsafe.Pointer(&buf[0])))
+				C.callLogger(loggerFunc, 0, 0, (*C.char)(unsafe.Pointer(&buf[0])))
 			}
 		}
 	}()
@@ -105,12 +124,7 @@ func init() {
 }
 
 //export  wgSetLogger
-func wgSetLogger(context, loggerFn uintptr) {
-	WGSetLogger(context, loggerFn)
-}
-
-func WGSetLogger(context, loggerFn uintptr) {
-	loggerCtx = unsafe.Pointer(context)
+func wgSetLogger(loggerFn uintptr) {
 	loggerFunc = unsafe.Pointer(loggerFn)
 }
 
@@ -122,8 +136,8 @@ func wgTurnOn(settings *C.char, tunFd int32) int32 {
 
 func WGTurnOn(settings string, tunFd int32) int32 {
 	logger := &device.Logger{
-		Verbosef: CLogger(0).Printf,
-		Errorf:   CLogger(1).Printf,
+		Verbosef: CLogger{Context: LogContextWireGuard, Level: 0}.Printf,
+		Errorf:   CLogger{Context: LogContextWireGuard, Level: 1}.Printf,
 	}
 	dupTunFd, err := unix.Dup(int(tunFd))
 	if err != nil {
@@ -303,8 +317,8 @@ func wgProxyTurnOn(configC *C.char, proxyAddressC, usernameC, passwordC *C.char,
 
 func WGProxyTurnOn(config, proxyAddress, username, password string, isSocks bool) int32 {
 	logger := &device.Logger{
-		Verbosef: CLogger(0).Printf,
-		Errorf:   CLogger(1).Printf,
+		Verbosef: CLogger{Context: LogContextWireGuard, Level: 0}.Printf,
+		Errorf:   CLogger{Context: LogContextWireGuard, Level: 1}.Printf,
 	}
 	// logger := device.NewLogger(device.LogLevelVerbose, "")
 
@@ -468,82 +482,12 @@ type cTunWriter struct {
 	closeFunc func() error
 }
 
-var (
-	tunWriterMap    = make(map[int32]*cTunWriter)
-	tunWriterMutex  sync.Mutex
-	nextTunWriterID int32 = 1
-)
-
 func (w *cTunWriter) Write(p []byte) (int, error) {
 	return w.writeFunc(p)
 }
 
 func (w *cTunWriter) Close() error {
 	return w.closeFunc()
-}
-
-// NewTunWriter creates a new TunWriter instance using the provided function pointers.
-// The `writeFn` pointer must point to a C function with the signature `int(const char*, int)`
-// that writes data and returns the number of bytes written or a negative value on failure.
-// The `closeFn` pointer must point to a C function with the signature `int()`
-// that closes the writer and returns 0 on success or a negative value on failure.
-// If either pointer is invalid (e.g., null), the function returns -1.
-//
-//export NewTunWriter
-func NewTunWriter(writeFn uintptr, closeFn uintptr) int32 {
-	if writeFn == 0 || closeFn == 0 {
-		return -1 // Invalid function pointers
-	}
-
-	// Store the function pointers in Go-managed memory
-	writeFunc := writeFn
-	closeFunc := closeFn
-
-	// Wrap the C function pointers in Go functions
-	goWriteFunc := func(data []byte) (int, error) {
-		if len(data) == 0 {
-			return 0, fmt.Errorf("data slice is empty")
-		}
-
-		cData := (*C.char)(unsafe.Pointer(&data[0]))
-		length := C.int(len(data))
-		// Cast the function pointer and call it
-		result := C.callWriteFunc(unsafe.Pointer(writeFunc), cData, length)
-		if result < 0 {
-			return 0, fmt.Errorf("write failed")
-		}
-		return int(result), nil
-	}
-
-	goCloseFunc := func() error {
-		// Cast the function pointer and call it
-		result := C.callCloseFunc(unsafe.Pointer(closeFunc))
-		if result < 0 {
-			return fmt.Errorf("close failed")
-		}
-		return nil
-	}
-
-	tunWriter := &cTunWriter{
-		writeFunc: goWriteFunc,
-		closeFunc: goCloseFunc,
-	}
-
-	tunWriterMutex.Lock()
-	defer tunWriterMutex.Unlock()
-
-	id := nextTunWriterID
-	nextTunWriterID++
-	tunWriterMap[id] = tunWriter
-	return id
-}
-
-//export FreeTunWriter
-func FreeTunWriter(writerID int32) {
-	tunWriterMutex.Lock()
-	defer tunWriterMutex.Unlock()
-
-	delete(tunWriterMap, writerID)
 }
 
 var (
@@ -553,16 +497,18 @@ var (
 )
 
 //export tunConnect
-func tunConnect(writerID int32, socks5Proxy *C.char, isUDPEnabled C.int) int32 {
-	tunWriterMutex.Lock()
-	tunWriter, exists := tunWriterMap[writerID]
-	tunWriterMutex.Unlock()
+func tunConnect(tunFd int32, socks5Proxy *C.char, isUDPEnabled C.int) int32 {
+	return TunConnect(tunFd, C.GoString(socks5Proxy), isUDPEnabled != 0)
+}
 
-	if !exists {
-		return -1 // Writer not found
+func TunConnect(tunFd int32, socks5Proxy string, isUDPEnabled bool) int32 {
+	logger := &device.Logger{
+		Verbosef: CLogger{Context: LogContextTun2Socks, Level: 0}.Printf,
+		Errorf:   CLogger{Context: LogContextTun2Socks, Level: 1}.Printf,
 	}
+	// logger := device.NewLogger(device.LogLevelVerbose, "")
 
-	tunnel, err := tun2socks.Connect(tunWriter, C.GoString(socks5Proxy), isUDPEnabled != 0)
+	tunnel, err := tun2socks.Connect(tunFd, socks5Proxy, isUDPEnabled, logger)
 	if err != nil {
 		return -1 // Return -1 to indicate an error
 	}

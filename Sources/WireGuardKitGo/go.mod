@@ -13,7 +13,6 @@ require (
 require (
 	github.com/eycorsican/go-tun2socks v1.16.11 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
@@ -21,6 +20,4 @@ require (
 
 )
 
-replace tun2socks => /Users/aviads/Documents/git/ONPNGPOC/apple-gotun2socks-library
-
-// replace tun2socks => github.com/chkp-aviads/apple-gotun2socks-library v1.0.0
+replace tun2socks => github.com/chkp-aviads/apple-gotun2socks-library v1.1.0

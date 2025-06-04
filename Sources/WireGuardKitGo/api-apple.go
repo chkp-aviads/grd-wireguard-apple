@@ -330,8 +330,12 @@ func WGProxyTurnOn(config, proxyAddress, username, password string, isSocks bool
 		proxyType = "http"
 	}
 	config += "\n[" + proxyType + "]\nBindAddress = " + proxyAddress
-	config += "\nUsername = " + username
-	config += "\nPassword = " + password
+	if username != "" {
+		config += "\nUsername = " + username
+	}
+	if password != "" {
+		config += "\nPassword = " + password
+	}
 	conf, err := wireproxy.ParseConfigFromString(config)
 	if err != nil {
 		logger.Errorf("Unable to parse config: %v", err)

@@ -12,6 +12,7 @@
 
 // General
 typedef void(*logger_fn_t)(int context, int level, const char *msg);
+typedef void (*dns_callback_fn_t)(const char *, void *userData);
 extern void wgSetLogger(logger_fn_t logger_fn);
 extern int wgLogContextWireGuard();
 extern int wgLogContextTun2Socks();
@@ -30,6 +31,7 @@ extern int64_t wgSetConfig(int handle, const char *settings);
 extern char *wgGetConfig(int handle);
 extern void wgBumpSockets(int handle);
 extern void wgDisableSomeRoamingForBrokenMobileSemantics(int handle);
+extern char *wgResolveDNS(int handle, dns_callback_fn_t callback_fn, const char *host, bool ipv4, void *userData);
 extern const char *wgVersion();
 
 // Tun2Socks

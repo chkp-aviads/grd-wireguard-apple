@@ -20,9 +20,15 @@ package main
 // {
 // 	return ((int(*)())func)();
 // }
+// static void callDNSResolveCallback(void *func, const char * addresses, void * userData)
+// {
+// 	((void(*)(const char *, void *))func)(addresses, userData);
+// }
 import "C"
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net"
@@ -42,6 +48,7 @@ import (
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
+	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
 // LogContextWireGuard is the context for WireGuard logging.
@@ -368,6 +375,49 @@ func WGProxyTurnOn(config, proxyAddress, username, password string, isSocks bool
 	}
 	tunnelHandles[i] = tunnelHandle{tun.Dev, logger, tun, nil}
 	return i
+}
+
+//export  wgResolveDNS
+func wgResolveDNS(tunnelHandle int32, callbackFunc unsafe.Pointer, hostC *C.char, ipv4 bool, userData unsafe.Pointer) {
+	host := C.GoString(hostC)
+	go func(tunnelHandle int32, host string, cb unsafe.Pointer, userData unsafe.Pointer) {
+		records, error := WGResolveDNS(tunnelHandle, host, ipv4)
+		if error != nil {
+			C.callDNSResolveCallback(cb, nil, userData)
+			return
+		}
+
+		// Convert HostRecord slice to JSON string
+		jsonData, err := json.Marshal(records)
+		if err != nil {
+			C.callDNSResolveCallback(cb, nil, userData)
+			return
+		}
+
+		// Convert to C string
+		cstr := C.CString(string(jsonData))
+		defer C.free(unsafe.Pointer(cstr))
+
+		// Call the C callback with the JSON result
+		C.callDNSResolveCallback(cb, cstr, userData)
+	}(tunnelHandle, host, callbackFunc, userData)
+}
+
+func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool) ([]netstack.HostRecord, error) {
+	dev, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		err := fmt.Errorf("invalid tunnel handle: %d", tunnelHandle)
+		dev.Logger.Errorf("%v", err)
+		return nil, err
+	}
+
+	records, err := dev.Vtun.Tnet.LookupContextHostWithIPVersion(context.Background(), host, ipv4)
+	if err != nil {
+		dev.Logger.Errorf("DNS resolution failed for %s: %v", host, err)
+		return nil, err
+	}
+
+	return records, nil
 }
 
 //export  wgStartHealthCheckServer

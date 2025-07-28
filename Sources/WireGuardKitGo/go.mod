@@ -6,7 +6,7 @@ toolchain go1.23.5
 
 require (
 	golang.org/x/sys v0.32.0
-	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173
+	golang.zx2c4.com/wireguard v0.0.0-20250521234502-f333402bd9cb
 	tun2socks v1.0.0
 )
 
@@ -21,3 +21,4 @@ require (
 )
 
 replace tun2socks => github.com/chkp-aviads/apple-gotun2socks-library v1.1.0
+replace golang.zx2c4.com/wireguard => /Users/aviads/Documents/git/github/wireguard-go

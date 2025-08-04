@@ -31,7 +31,8 @@ extern int64_t wgSetConfig(int handle, const char *settings);
 extern char *wgGetConfig(int handle);
 extern void wgBumpSockets(int handle);
 extern void wgDisableSomeRoamingForBrokenMobileSemantics(int handle);
-extern char *wgResolveDNS(int handle, dns_callback_fn_t callback_fn, const char *host, bool ipv4, void *userData);
+extern int wgResolveDNS(int handle, dns_callback_fn_t callback_fn, const char *host, bool ipv4, void *userData);
+extern bool wgCancelResolveDNS(int requestID);
 extern const char *wgVersion();
 
 // Tun2Socks

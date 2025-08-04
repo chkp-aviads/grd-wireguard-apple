@@ -101,6 +101,13 @@ type tunnelHandle struct {
 var tunnelHandles = make(map[int32]tunnelHandle)
 var proxyHandles = make(map[int32]wireproxy.VirtualTun)
 
+// DNS resolution management
+var (
+	dnsResolutionMap   = make(map[int32]context.CancelFunc)
+	dnsResolutionMutex sync.Mutex
+	nextDNSRequestID   int32 = 1
+)
+
 func init() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, unix.SIGUSR2)
@@ -378,10 +385,27 @@ func WGProxyTurnOn(config, proxyAddress, username, password string, isSocks bool
 }
 
 //export  wgResolveDNS
-func wgResolveDNS(tunnelHandle int32, callbackFunc unsafe.Pointer, hostC *C.char, ipv4 bool, userData unsafe.Pointer) {
+func wgResolveDNS(tunnelHandle int32, callbackFunc unsafe.Pointer, hostC *C.char, ipv4 bool, userData unsafe.Pointer) int32 {
 	host := C.GoString(hostC)
-	go func(tunnelHandle int32, host string, cb unsafe.Pointer, userData unsafe.Pointer) {
-		records, error := WGResolveDNS(tunnelHandle, host, ipv4)
+
+	// Create cancellable context and store it
+	ctx, cancel := context.WithCancel(context.Background())
+
+	dnsResolutionMutex.Lock()
+	requestID := nextDNSRequestID
+	nextDNSRequestID++
+	dnsResolutionMap[requestID] = cancel
+	dnsResolutionMutex.Unlock()
+
+	go func(tunnelHandle int32, host string, cb unsafe.Pointer, userData unsafe.Pointer, reqID int32) {
+		defer func() {
+			// Clean up the cancel function from the map when done
+			dnsResolutionMutex.Lock()
+			delete(dnsResolutionMap, reqID)
+			dnsResolutionMutex.Unlock()
+		}()
+
+		records, error := WGResolveDNS(tunnelHandle, host, ipv4, ctx)
 		if error != nil {
 			C.callDNSResolveCallback(cb, nil, userData)
 			return
@@ -400,10 +424,12 @@ func wgResolveDNS(tunnelHandle int32, callbackFunc unsafe.Pointer, hostC *C.char
 
 		// Call the C callback with the JSON result
 		C.callDNSResolveCallback(cb, cstr, userData)
-	}(tunnelHandle, host, callbackFunc, userData)
+	}(tunnelHandle, host, callbackFunc, userData, requestID)
+
+	return requestID
 }
 
-func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool) ([]netstack.HostRecord, error) {
+func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool, ctx context.Context) ([]netstack.HostRecord, error) {
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		err := fmt.Errorf("invalid tunnel handle: %d", tunnelHandle)
@@ -411,13 +437,30 @@ func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool) ([]netstack.HostRe
 		return nil, err
 	}
 
-	records, err := dev.Vtun.Tnet.LookupContextHostWithIPVersion(context.Background(), host, ipv4)
+	records, err := dev.Vtun.Tnet.LookupContextHostWithIPVersion(ctx, host, ipv4)
 	if err != nil {
 		dev.Logger.Errorf("DNS resolution failed for %s: %v", host, err)
 		return nil, err
 	}
 
 	return records, nil
+}
+
+//export  wgCancelResolveDNS
+func wgCancelResolveDNS(requestID int32) bool {
+	return WGCancelResolveDNS(requestID)
+}
+
+func WGCancelResolveDNS(requestID int32) bool {
+	dnsResolutionMutex.Lock()
+	defer dnsResolutionMutex.Unlock()
+
+	if cancelFunc, exists := dnsResolutionMap[requestID]; exists {
+		cancelFunc()
+		delete(dnsResolutionMap, requestID)
+		return true
+	}
+	return false
 }
 
 //export  wgStartHealthCheckServer

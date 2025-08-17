@@ -230,12 +230,14 @@ github.com/chkp-aviads/apple-gotun2socks-library v1.0.0 h1:Tv/L/Ttfh49XkbFqFOvC0
 github.com/chkp-aviads/apple-gotun2socks-library v1.0.0/go.mod h1:xyJG37rz2afnbNqD0zGnIaLN24+jEd1ivdNGeACdctg=
 github.com/chkp-aviads/apple-gotun2socks-library v1.1.0 h1:eL88HlZlxe6QKk9gqSRWnZ7UBVrn7wL73yxy+rSQ18A=
 github.com/chkp-aviads/apple-gotun2socks-library v1.1.0/go.mod h1:b9mLj0A36BBUQQI0nbkcXOBvyTwhpKmaP9Ry24Sb75s=
+github.com/chkp-aviads/apple-gotun2socks-library v1.1.1 h1:UWXSNKAOj1ug+7jZOXBiVrJ1ezGk1FNcBP1jDJb3MhY=
 github.com/chkp-aviads/go-socks5 v0.0.8 h1:DTGsEm3p2QX9bgYbp6OJeVFQih7ggjXDdHHuwHZS2CY=
 github.com/chkp-aviads/go-socks5 v0.0.8/go.mod h1:4RwhzQj0Loh8jOiglaSL52WdApNfJwYCKbKWC6TGyWM=
 github.com/chkp-aviads/wireguard-go v0.0.0-20250521234502-f333402bd9cb h1:gFMYg2WAnsU/dnEFPV2wN0e5fyNQ0yloB1sIGuv1KZc=
 github.com/chkp-aviads/wireguard-go v0.0.0-20250521234502-f333402bd9cb/go.mod h1:rpwXGsirqLqN2L0JDJQlwOboGHmptD5ZD6T2VmcqhTw=
 github.com/chkp-aviads/wireguard-go v0.0.0-20250729150305-240cc9c36bf4 h1:Prk/ZUU5SfLjc7TiFl8ksTuoctRyzxPGcNw7WNw6hrE=
-github.com/chkp-aviads/wireguard-go v0.0.0-20250729150305-240cc9c36bf4/go.mod h1:rpwXGsirqLqN2L0JDJQlwOboGHmptD5ZD6T2VmcqhTw=
+github.com/chkp-aviads/wireguard-go v0.0.20250817 h1:jaAYefFAep1ciYVwOMsQoWCMDmZIKDjmEikCVjCnQ+w=
+github.com/chkp-aviads/wireguard-go v0.0.20250817/go.mod h1:rpwXGsirqLqN2L0JDJQlwOboGHmptD5ZD6T2VmcqhTw=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=

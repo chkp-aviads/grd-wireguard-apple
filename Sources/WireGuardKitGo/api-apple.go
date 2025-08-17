@@ -430,16 +430,22 @@ func wgResolveDNS(tunnelHandle int32, callbackFunc unsafe.Pointer, hostC *C.char
 }
 
 func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool, ctx context.Context) ([]netstack.HostRecord, error) {
+	// Add IP version string for clearer logging
+	ipVer := "IPv6"
+	if ipv4 {
+		ipVer = "IPv4"
+	}
+
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {
-		err := fmt.Errorf("invalid tunnel handle: %d", tunnelHandle)
+		err := fmt.Errorf("invalid tunnel handle: %d (%s)", tunnelHandle, ipVer)
 		dev.Logger.Errorf("%v", err)
 		return nil, err
 	}
 
 	records, err := dev.Vtun.Tnet.LookupContextHostWithIPVersion(ctx, host, ipv4)
 	if err != nil {
-		dev.Logger.Errorf("DNS resolution failed for %s: %v", host, err)
+		dev.Logger.Errorf("DNS resolution failed for %s (%s): %v", host, ipVer, err)
 		return nil, err
 	}
 

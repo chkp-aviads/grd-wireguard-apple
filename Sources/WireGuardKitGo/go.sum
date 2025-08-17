@@ -1,3 +1,5 @@
+github.com/chkp-aviads/apple-gotun2socks-library v1.1.1/go.mod h1:b9mLj0A36BBUQQI0nbkcXOBvyTwhpKmaP9Ry24Sb75s=
+github.com/chkp-aviads/wireguard-go v0.0.0-20250729150305-240cc9c36bf4/go.mod h1:rpwXGsirqLqN2L0JDJQlwOboGHmptD5ZD6T2VmcqhTw=
 github.com/eycorsican/go-tun2socks v1.16.11 h1:+hJDNgisrYaGEqoSxhdikMgMJ4Ilfwm/IZDrWRrbaH8=
 github.com/eycorsican/go-tun2socks v1.16.11/go.mod h1:wgB2BFT8ZaPKyKOQ/5dljMG/YIow+AIXyq4KBwJ5sGQ=
 github.com/google/btree v1.1.3 h1:CVpQJjYgC4VbzxeGVHfvZrv1ctoYCAI8vbl07Fcxlyg=

@@ -439,7 +439,6 @@ func WGResolveDNS(tunnelHandle int32, host string, ipv4 bool, ctx context.Contex
 	dev, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		err := fmt.Errorf("invalid tunnel handle: %d (%s)", tunnelHandle, ipVer)
-		dev.Logger.Errorf("%v", err)
 		return nil, err
 	}
 
